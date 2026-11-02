@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111111">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Nearby Trains</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Nearby trains</h1>
+      <p id="status" class="status" aria-live="polite">Finding your location…</p>
+    </div>
+    <button id="refresh" class="refresh" aria-label="Refresh arrivals">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+    </button>
+  </header>
+
+  <form id="search" class="search" hidden>
+    <input id="search-input" type="search" placeholder="Search a station" autocomplete="off" aria-label="Search a station">
+    <ul id="search-results" class="search-results"></ul>
+  </form>
+
+  <main id="stations" class="stations"></main>
+
+  <footer class="foot">
+    Live data from the MTA's open GTFS-realtime feeds.
+    <button id="toggle-search" class="link">Pick a station instead</button>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
