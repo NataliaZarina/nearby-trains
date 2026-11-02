@@ -6,6 +6,8 @@
   --line: #e4e4e0;
   --accent: #0039a6;
   --soon: #0a7d2c;
+  --dir-n: #0a6fd6; /* toward Manhattan / north */
+  --dir-s: #d6336c; /* away from Manhattan / south */
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -16,6 +18,8 @@
     --line: #2a2a2a;
     --accent: #6f9bff;
     --soon: #5fd383;
+    --dir-n: #5cb4ff;
+    --dir-s: #ff7a9a;
   }
 }
 
@@ -75,14 +79,16 @@ h1 { margin: 0; font-size: 26px; letter-spacing: -0.02em; }
 
 .dir { border-top: 1px solid var(--line); padding: 10px 0 8px; margin-top: 8px; }
 .dir:first-of-type { border-top: 0; }
-.dir-label { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: var(--text); margin: 0 0 8px; }
+.dir-N { --dir: var(--dir-n); }
+.dir-S { --dir: var(--dir-s); }
+.dir-label { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: var(--dir, var(--text)); margin: 0 0 8px; }
 .dir-arrow {
   flex: none;
   width: 22px; height: 22px;
   border-radius: 50%;
   display: inline-grid; place-items: center;
-  background: var(--text); color: var(--card);
-  font-size: 14px; font-weight: 700;
+  background: var(--dir, var(--text)); color: var(--card);
+  font-size: 14px; font-weight: 800;
 }
 .arrivals { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .arrival {

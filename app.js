@@ -181,15 +181,18 @@ function directionsFor(complex, nowSec) {
       const id = stop.stopId + suffix;
       for (const a of state.arrivals) {
         if (a.stopId !== id || a.time < nowSec - 30) continue;
-        const key = overrides[a.routeId] || fallback;
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(a);
+        const label = overrides[a.routeId] || fallback;
+        const key = suffix + label;
+        if (!groups.has(key)) groups.set(key, { dir: suffix, label, list: [] });
+        groups.get(key).list.push(a);
       }
     }
   }
   // Within each direction, one row per line with its next few trains, lines ordered by who comes first.
-  return [...groups.entries()]
-    .map(([label, list]) => {
+  // Northbound (toward Manhattan, or north for the G) groups come first.
+  return [...groups.values()]
+    .sort((a, b) => (a.dir === b.dir ? 0 : a.dir === 'N' ? -1 : 1))
+    .map(({ dir, label, list }) => {
       const seen = new Set();
       const byRoute = new Map();
       for (const a of list.sort((x, y) => x.time - y.time)) {
@@ -200,7 +203,7 @@ function directionsFor(complex, nowSec) {
         // The feed sometimes lists one train under two trip IDs; skip anything within a minute of the last one.
         if (times.length < PER_ROUTE && !(times.length && a.time - times[times.length - 1] < 60)) times.push(a.time);
       }
-      return { label, lines: [...byRoute.entries()].map(([routeId, times]) => ({ routeId, times })) };
+      return { dir, label, lines: [...byRoute.entries()].map(([routeId, times]) => ({ routeId, times })) };
     })
     .filter((g) => g.lines.length);
 }
@@ -241,8 +244,8 @@ function render() {
     const dirs = directionsFor(c, nowSec);
     const body = dirs.length
       ? dirs.map((d) => `
-          <section class="dir">
-            <p class="dir-label"><span class="dir-arrow" aria-hidden="true">→</span>${esc(d.label)}</p>
+          <section class="dir dir-${d.dir}">
+            <p class="dir-label"><span class="dir-arrow" aria-hidden="true">${d.dir === 'N' ? '↑' : '↓'}</span>${esc(d.label)}</p>
             <ul class="arrivals">
               ${d.lines.map((l) => `<li class="arrival">${bullet(l.routeId)}${minutes(l.times[0], nowSec)}${laterMinutes(l.times, nowSec)}</li>`).join('')}
             </ul>
