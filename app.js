@@ -212,7 +212,7 @@ function minutes(timeSec, nowSec) {
 
 function laterMinutes(times, nowSec) {
   const rest = times.slice(1).map((t) => Math.max(0, Math.floor((t - nowSec) / 60)));
-  return rest.length ? `<span class="later">then ${rest.join(', ')} min</span>` : '';
+  return rest.length ? `<span class="later">then ${rest.map((m) => `<b>${m}</b>`).join(', ')} min</span>` : '';
 }
 
 function distanceText(m) {
