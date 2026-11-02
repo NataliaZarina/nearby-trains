@@ -4,6 +4,13 @@ const STATIONS_URL = 'https://data.ny.gov/resource/39hk-dx4f.json?$limit=1000';
 const FEED_BASE = 'https://api-endpoint.mta.info/Dataservice/mtagtfsfeeds/nyct%2F';
 const STATIONS_CACHE_KEY = 'mta-stations-v1';
 const STATIONS_CACHE_MS = 7 * 24 * 60 * 60 * 1000;
+const PLACE_KEY = 'mta-place-v1';
+
+// Coordinates from the US Census geocoder.
+const PLACES = [
+  { name: 'Nevins St', address: '123 Nevins St', lat: 40.684473, lon: -73.983670 },
+  { name: 'Union Ave', address: '544 Union Ave', lat: 40.716734, lon: -73.951986 },
+];
 
 const NEARBY_COUNT = 4;
 const REFRESH_MS = 30_000;
@@ -21,25 +28,30 @@ const FEEDS_BY_ROUTE = {
   SIR: ['gtfs-si'],
 };
 
+// Stops shared by lines heading different ways, where the dataset's single direction label is wrong for some of them.
+const LABEL_OVERRIDES = {
+  A42: { // Hoyt-Schermerhorn
+    N: { A: 'Manhattan', C: 'Manhattan', G: 'Queens' },
+    S: { A: 'Far Rockaway & Lefferts', C: 'Euclid Av', G: 'Church Av' },
+  },
+};
+
 const $ = (id) => document.getElementById(id);
 const els = {
   status: $('status'),
   refresh: $('refresh'),
   stations: $('stations'),
-  search: $('search'),
-  searchInput: $('search-input'),
-  searchResults: $('search-results'),
-  toggleSearch: $('toggle-search'),
+  places: $('places'),
 };
 
 const state = {
   stations: [],   // raw rows from the dataset, one per line-level stop
   complexes: [],  // stops grouped by complex_id
-  position: null, // { lat, lon }
-  pinned: null,   // complex chosen manually from search
+  place: 0,       // index into PLACES
   arrivals: [],   // decoded rows from the realtime feeds
   updatedAt: null,
   loading: false,
+  again: false,
 };
 
 // ---------- Stations ----------
@@ -94,10 +106,9 @@ function distanceMeters(a, b) {
 }
 
 function visibleComplexes() {
-  if (state.pinned) return [{ ...state.pinned, distance: state.position ? distanceMeters(state.position, state.pinned) : null }];
-  if (!state.position) return [];
+  const place = PLACES[state.place];
   return state.complexes
-    .map((c) => ({ ...c, distance: distanceMeters(state.position, c) }))
+    .map((c) => ({ ...c, distance: distanceMeters(place, c) }))
     .sort((a, b) => a.distance - b.distance)
     .slice(0, NEARBY_COUNT);
 }
@@ -120,8 +131,10 @@ async function loadArrivals(complexes) {
 }
 
 async function refresh() {
+  // A tab switch mid-load needs different feeds, so run once more when the current load finishes.
+  if (state.loading) { state.again = true; return; }
   const complexes = visibleComplexes();
-  if (!complexes.length || state.loading) return;
+  if (!complexes.length) return;
   state.loading = true;
   els.refresh.classList.add('spinning');
   try {
@@ -135,6 +148,7 @@ async function refresh() {
     state.loading = false;
     els.refresh.classList.remove('spinning');
     render();
+    if (state.again) { state.again = false; refresh(); }
   }
 }
 
@@ -162,11 +176,14 @@ function directionsFor(complex, nowSec) {
   const groups = new Map();
   for (const stop of complex.stops) {
     for (const [suffix, label] of [['N', stop.north], ['S', stop.south]]) {
-      const key = label || (suffix === 'N' ? 'Northbound' : 'Southbound');
-      if (!groups.has(key)) groups.set(key, []);
+      const fallback = label || (suffix === 'N' ? 'Northbound' : 'Southbound');
+      const overrides = LABEL_OVERRIDES[stop.stopId]?.[suffix] || {};
       const id = stop.stopId + suffix;
       for (const a of state.arrivals) {
-        if (a.stopId === id && a.time >= nowSec - 30) groups.get(key).push(a);
+        if (a.stopId !== id || a.time < nowSec - 30) continue;
+        const key = overrides[a.routeId] || fallback;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(a);
       }
     }
   }
@@ -243,84 +260,38 @@ function render() {
   }).join('');
 
   const time = state.updatedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
-  const where = state.pinned ? 'Showing a chosen station' : 'Closest stations to you';
-  els.status.textContent = `${where} · updated ${time}${state.feedWarning ? ` · ${state.feedWarning}` : ''}`;
+  els.status.textContent = `Near ${PLACES[state.place].address} · updated ${time}${state.feedWarning ? ` · ${state.feedWarning}` : ''}`;
 }
 
-// ---------- Search fallback ----------
+// ---------- Places ----------
 
-function showSearch(show = true) {
-  els.search.hidden = !show;
-  els.toggleSearch.textContent = show ? 'Use my location instead' : 'Pick a station instead';
-  if (show) els.searchInput.focus();
+function savedPlace() {
+  try {
+    const i = Number(localStorage.getItem(PLACE_KEY));
+    if (PLACES[i]) return i;
+  } catch {}
+  return 0;
 }
 
-function renderSearch() {
-  const q = els.searchInput.value.trim().toLowerCase();
-  if (!q) { els.searchResults.innerHTML = ''; return; }
-  const matches = state.complexes.filter((c) => c.name.toLowerCase().includes(q)).slice(0, 8);
-  els.searchResults.innerHTML = matches.map((c) => `
-    <li><button type="button" data-id="${esc(c.id)}">
-      <span>${esc(c.name)}</span>
-      <span class="card-routes">${c.routes.map((r) => bullet(r, true)).join('')}</span>
-    </button></li>`).join('') || '<li class="empty">No matching stations</li>';
+function renderPlaces() {
+  els.places.innerHTML = PLACES.map((p, i) => `
+    <button type="button" role="tab" data-i="${i}" aria-selected="${i === state.place}">${esc(p.name)}</button>`).join('');
 }
 
-els.searchInput.addEventListener('input', renderSearch);
-els.search.addEventListener('submit', (e) => e.preventDefault());
-els.searchResults.addEventListener('click', (e) => {
-  const btn = e.target.closest('button[data-id]');
-  if (!btn) return;
-  state.pinned = state.complexes.find((c) => c.id === btn.dataset.id);
+function selectPlace(i) {
+  state.place = i;
   state.updatedAt = null;
-  els.searchInput.value = '';
-  renderSearch();
-  showSearch(false);
+  try { localStorage.setItem(PLACE_KEY, String(i)); } catch {}
+  renderPlaces();
   render();
   refresh();
-});
-els.toggleSearch.addEventListener('click', () => {
-  if (els.search.hidden) return showSearch(true);
-  state.pinned = null;
-  showSearch(false);
-  locate();
-});
-els.refresh.addEventListener('click', () => (state.position || state.pinned ? refresh() : locate()));
-
-// ---------- Location ----------
-
-function setPosition(lat, lon) {
-  const first = !state.position;
-  state.position = { lat, lon };
-  if (first || !state.pinned) {
-    state.updatedAt = null;
-    render();
-    refresh();
-  }
 }
 
-function locate() {
-  // ?lat=40.75&lon=-73.99 overrides GPS, handy for testing from a desk.
-  const params = new URLSearchParams(location.search);
-  if (params.has('lat') && params.has('lon')) {
-    return setPosition(Number(params.get('lat')), Number(params.get('lon')));
-  }
-  if (!('geolocation' in navigator)) {
-    els.status.textContent = 'Location isn’t available here. Pick a station below.';
-    return showSearch(true);
-  }
-  els.status.textContent = 'Finding your location…';
-  navigator.geolocation.getCurrentPosition(
-    (pos) => setPosition(pos.coords.latitude, pos.coords.longitude),
-    (err) => {
-      els.status.textContent = err.code === err.PERMISSION_DENIED
-        ? 'Location is off. Pick a station below.'
-        : 'Couldn’t get your location. Pick a station below.';
-      showSearch(true);
-    },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
-  );
-}
+els.places.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-i]');
+  if (btn && Number(btn.dataset.i) !== state.place) selectPlace(Number(btn.dataset.i));
+});
+els.refresh.addEventListener('click', () => refresh());
 
 // ---------- Boot ----------
 
@@ -332,7 +303,7 @@ async function start() {
     els.status.textContent = 'Couldn’t load the station list. Check your connection and refresh.';
     return;
   }
-  locate();
+  selectPlace(savedPlace());
   setInterval(() => { if (!document.hidden) refresh(); }, REFRESH_MS);
   setInterval(() => { if (!document.hidden && state.updatedAt) render(); }, 10_000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });

@@ -1,6 +1,6 @@
 # Nearby Trains
 
-A mobile-first web app that finds the subway stations closest to you and shows live arrival times.
+A mobile-first web app showing live subway arrivals for the 4 stations closest to two saved addresses (edit `PLACES` in `app.js` to change them). Tap a tab to switch; the app remembers your last choice.
 
 No build step, no API key, no server code: the browser fetches everything directly.
 
@@ -18,8 +18,8 @@ No build step, no API key, no server code: the browser fetches everything direct
 python3 -m http.server 5173
 ```
 
-Open http://localhost:5173. Add `?lat=40.7359&lon=-73.9906` to fake a location from your desk.
+Open http://localhost:5173.
 
 ## On your phone
 
-Browsers only share your location with HTTPS pages, so to use it on your phone, host the folder on any static host (GitHub Pages, Cloudflare Pages, Netlify). Then use "Add to Home Screen" to get an app icon.
+Host the folder on any static host, then use "Add to Home Screen" for an app icon. The two addresses are in the code, so if you host it publicly (a public GitHub repo or Pages site), anyone can see them.
