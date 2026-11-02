@@ -78,12 +78,15 @@ h1 { margin: 0; font-size: 26px; letter-spacing: -0.02em; }
 .dir-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 8px; }
 .arrivals { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .arrival {
-  display: flex; align-items: center; gap: 10px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
   padding: 4px 0;
 }
-.mins { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 18px; min-width: 62px; }
-.later { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
-.mins small { font-weight: 500; font-size: 12px; color: var(--muted); margin-left: 1px; }
+.mins { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 18px; }
+.later { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; text-align: right; }
+.mins small { font-weight: 500; font-size: 13px; color: var(--muted); }
 .mins.now { color: var(--soon); }
 .empty { color: var(--muted); font-size: 14px; margin: 4px 0 12px; }
 

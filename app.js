@@ -207,7 +207,7 @@ function directionsFor(complex, nowSec) {
 
 function minutes(timeSec, nowSec) {
   const m = Math.floor((timeSec - nowSec) / 60);
-  return m <= 0 ? '<span class="mins now">Now</span>' : `<span class="mins">${m}<small>min</small></span>`;
+  return m <= 0 ? '<span class="mins now">Now</span>' : `<span class="mins">${m} <small>min</small></span>`;
 }
 
 function laterMinutes(times, nowSec) {
