@@ -242,7 +242,7 @@ function render() {
     const body = dirs.length
       ? dirs.map((d) => `
           <section class="dir">
-            <p class="dir-label">${esc(d.label)}</p>
+            <p class="dir-label"><span class="dir-arrow" aria-hidden="true">→</span>${esc(d.label)}</p>
             <ul class="arrivals">
               ${d.lines.map((l) => `<li class="arrival">${bullet(l.routeId)}${minutes(l.times[0], nowSec)}${laterMinutes(l.times, nowSec)}</li>`).join('')}
             </ul>
